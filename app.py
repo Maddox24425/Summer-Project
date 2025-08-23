@@ -13,7 +13,7 @@ st.markdown(data)
 
 st.image('https://user-images.githubusercontent.com/103222259/255432423-8157a6d0-8d82-43b4-894f-53cd2125c891.png')
 
-with open(r'D:\Data Science\Summer-Project\diabetes_model_XGB.pkl','rb') as f:
+with open('diabetes_model_XGB.pkl','rb') as f:
     chatgpt = pickle.load(f)
 
 # Load data
