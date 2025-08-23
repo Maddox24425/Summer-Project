@@ -37,7 +37,7 @@ for i in num_col:
     all_values.append(var)
 
 #Gender dropdown here
-gender_option = st.sidebar.selectbox("Select Gender", ["Male", "Female", "Other"])
+gender_option = st.sidebar.selectbox("Select Gender", ["Male", "Female"])
 if gender_option == "Male":
     gender_encoded = 1
 elif gender_option == "Female":
@@ -76,13 +76,13 @@ for i in range(100):
     progress_bar.progress(i + 1)
 
 if ans == 0:
-    body = f'yes'
+    body = f'Non-Diabetic'
     placeholder.empty()
     place.empty()
     st.success(body)
     progress_bar = st.progress(0)
 else:
-    body = 'no'
+    body = 'Diabetic'
     placeholder.empty()
     place.empty()
     st.warning(body)
