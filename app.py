@@ -14,7 +14,7 @@ data='''The Diabetes prediction dataset is a collection of medical and demograph
 
 #open our pkl file
 
-with open ("diabetes_model_XGB.pkl","rb") as f:
+with open (r"D:\Data Science\Summer-Project\diabetes_model_XGB.pkl","rb") as f:
     model=pickle.load(f)
 
 st.subheader(data)
