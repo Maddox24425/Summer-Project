@@ -13,7 +13,7 @@ st.markdown(data)
 
 st.image('https://user-images.githubusercontent.com/103222259/255432423-8157a6d0-8d82-43b4-894f-53cd2125c891.png')
 
-with open(r'D:\Data Science\Summer-Project\diabetes_model_XGB.pkl','rb') as f:
+with open('diabetes_model_XGB.pkl','rb') as f:
     chatgpt = pickle.load(f)
 
 # Load data
@@ -37,7 +37,7 @@ for i in num_col:
     all_values.append(var)
 
 #Gender dropdown here
-gender_option = st.sidebar.selectbox("Select Gender", ["Male", "Female", "Other"])
+gender_option = st.sidebar.selectbox("Select Gender", ["Male", "Female"])
 if gender_option == "Male":
     gender_encoded = 1
 elif gender_option == "Female":
@@ -69,20 +69,20 @@ placeholder = st.empty()
 placeholder.subheader('Predicting Diabetes') 
 
 place = st.empty()
-place.image('https://i.makeagif.com/media/1-17-2024/dw-jXM.gif',width = 200)
+place.image('https://media0.giphy.com/media/aPBXEeY01Dfp9tjyqi/giphy.gif',width = 200)
 
 for i in range(100):
     time.sleep(0.05)
     progress_bar.progress(i + 1)
 
 if ans == 0:
-    body = f'yes'
+    body = f'Non-Diabetic'
     placeholder.empty()
     place.empty()
     st.success(body)
     progress_bar = st.progress(0)
 else:
-    body = 'no'
+    body = 'Diabetic'
     placeholder.empty()
     place.empty()
     st.warning(body)
