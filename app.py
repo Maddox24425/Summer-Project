@@ -69,7 +69,7 @@ placeholder = st.empty()
 placeholder.subheader('Predicting Diabetes') 
 
 place = st.empty()
-place.image('https://i.makeagif.com/media/1-17-2024/dw-jXM.gif',width = 200)
+place.image('https://media0.giphy.com/media/aPBXEeY01Dfp9tjyqi/giphy.gif',width = 200)
 
 for i in range(100):
     time.sleep(0.05)
