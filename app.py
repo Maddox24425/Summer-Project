@@ -1,98 +1,129 @@
-import os
-import joblib   # ✅ use joblib instead of pickle
-import numpy as np
-import pandas as pd
 import streamlit as st
-import random
+import pandas as pd
+import numpy as np
+import joblib
 import time
-import kagglehub
 import warnings
+
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Diabetes Prediction",
+    page_icon="🩺",
+    layout="wide"
+)
+
+# Suppress warnings for a cleaner interface
 warnings.filterwarnings("ignore")
 
-st.image("https://user-images.githubusercontent.com/103222259/255432423-8157a6d0-8d82-43b4-894f-53cd2125c891.png")
+# --- Model and Data Loading ---
+# This function caches the model to avoid reloading it on every interaction.
+@st.cache_resource
+def load_xgboost_model():
+    """Load the pre-trained XGBoost model."""
+    try:
+        # IMPORTANT: You must upload your actual XGBoost model file
+        # and ensure it's named 'diabetes_model_XGB.pkl'.
+        model = joblib.load("diabetes_model_XGB.pkl")
+        return model
+    except Exception as e:
+        st.error(f"Error loading the model: {e}")
+        st.info("Please ensure a valid XGBoost model file named 'diabetes_model_XGB.pkl' is in the repository.")
+        return None
 
-st.header("Diabetes Prediction Using Machine Learning")
+@st.cache_data
+def load_dataset():
+    """Load the dataset from a local CSV file."""
+    try:
+        # IMPORTANT: You must add the 'diabetes_prediction_dataset.csv' file to your GitHub repository.
+        data = pd.read_csv("diabetes_prediction_dataset.csv")
+        return data
+    except FileNotFoundError:
+        st.error("Dataset file not found.")
+        st.info("Please upload 'diabetes_prediction_dataset.csv' to your GitHub repository.")
+        return None
 
-data_info = '''The Diabetes prediction dataset is a collection of medical and demographic data from patients, along with their diabetes status (positive or negative). The data includes features such as age, gender, body mass index (BMI), hypertension, heart disease, smoking history, HbA1c level, and blood glucose level. This dataset can be used to build machine learning models to predict diabetes in patients based on their medical history and demographic information. This can be useful for healthcare professionals in identifying patients who may be at risk of developing diabetes and in developing personalized treatment plans. Additionally, the dataset can be used by researchers to explore the relationships between various medical and demographic factors and the likelihood of developing diabetes.'''
-st.subheader(data_info)
+model = load_xgboost_model()
+data = load_dataset()
 
-# ✅ Load model safely with joblib
-model = joblib.load("diabetes_model_XGB.pkl")
-joblib.dump(model, "diabetes_model_XGB.pkl")
+# --- Main Application ---
+if model is not None and data is not None:
+    # --- UI Setup ---
+    st.image("https://user-images.githubusercontent.com/103222259/255432423-8157a6d0-8d82-43b4-894f-53cd2125c891.png")
+    st.title("🚀 Diabetes Prediction Using XGBoost")
 
-# ✅ Load dataset
-path = kagglehub.dataset_download("iammustafatz/diabetes-prediction-dataset")
-all_files = os.listdir(path)
-path = os.path.join(path, all_files[0])
-data = pd.read_csv(path)
+    st.markdown("""
+    This application predicts the likelihood of diabetes using a powerful **XGBoost** model.
+    Adjust the sliders in the sidebar to match the patient's data and click the predict button.
+    """)
+    st.markdown("---")
 
-st.sidebar.header("Select feature to predict Diabetes")
-st.sidebar.image("https://www.eresvihda.es/wp-content/uploads/2023/10/Diabetes.gif")
+    # --- Sidebar for User Input ---
+    st.sidebar.header("Select Patient Features")
+    st.sidebar.image("https://www.eresvihda.es/wp-content/uploads/2023/10/Diabetes.gif")
 
-# ✅ Gender encoding
-data['gender_encoded'] = (data['gender'] == 'Male').astype(int)
-data = data.drop('gender', axis=1)
+    # --- User Input Collection ---
+    input_values = {}
+    
+    input_values['age'] = st.sidebar.slider('Age', int(data['age'].min()), int(data['age'].max()), 25)
+    input_values['bmi'] = st.sidebar.slider('Body Mass Index (BMI)', float(data['bmi'].min()), float(data['bmi'].max()), 22.0)
+    input_values['HbA1c_level'] = st.sidebar.slider('HbA1c Level', float(data['HbA1c_level'].min()), float(data['HbA1c_level'].max()), 5.7)
+    input_values['blood_glucose_level'] = st.sidebar.slider('Blood Glucose Level', int(data['blood_glucose_level'].min()), int(data['blood_glucose_level'].max()), 100)
 
-# ✅ Clean smoking column
-smoking_replace_dict = {
-    'not current': 'former',
-    'ever': 'former',
-    'No Info': 'No_Info'
-}
-data.replace(smoking_replace_dict, inplace=True)
+    gender_map = {'Female': 0, 'Male': 1}
+    gender = st.sidebar.selectbox('Gender', list(gender_map.keys()))
+    input_values['gender'] = gender_map[gender]
 
-# ✅ One-hot encoding with all categories enforced
-data['smoking_history'] = pd.Categorical(
-    data['smoking_history'], 
-    categories=['No_Info', 'current', 'former', 'never']
-)
-data = pd.get_dummies(data, columns=['smoking_history'], prefix='smoking', dtype=int)
+    input_values['hypertension'] = st.sidebar.selectbox('Hypertension', [0, 1], help="0 = No, 1 = Yes")
+    input_values['heart_disease'] = st.sidebar.selectbox('Heart Disease', [0, 1], help="0 = No, 1 = Yes")
 
-# ✅ Ensure all smoking columns exist
-for col_name in ['smoking_No_Info', 'smoking_current', 'smoking_former', 'smoking_never']:
-    if col_name not in data.columns:
-        data[col_name] = 0
+    smoking_history_map = {'never': 4, 'No Info': 0, 'current': 1, 'former': 2, 'ever': 3, 'not current': 5}
+    smoking_status = st.sidebar.selectbox('Smoking History', list(smoking_history_map.keys()))
+    input_values['smoking_history'] = smoking_history_map[smoking_status]
 
-col = ['age', 'hypertension', 'heart_disease', 'bmi', 'HbA1c_level',
-       'blood_glucose_level', 'gender_encoded',
-       'smoking_No_Info', 'smoking_current', 'smoking_former', 'smoking_never']
 
-# ✅ Sidebar input sliders
-all_values = []
-random.seed(57)
-for i in col:
-    min_value, max_value = data[i].agg(['min', 'max'])
-    var = st.sidebar.slider(f'Select {i} value',
-                            int(min_value), int(max_value),
-                            random.randint(int(min_value), int(max_value)))
-    all_values.append(var)
+    # --- Prediction Logic ---
+    if st.sidebar.button("Predict Diabetes Status", type="primary"):
+        # Create a DataFrame from user inputs.
+        # The column order must exactly match the order used for training the XGBoost model.
+        # We will create a dataframe with all possible columns and then select the ones we need
+        # in the correct order.
+        
+        # This is a simplified feature engineering step. Ensure it matches your training script.
+        input_df = pd.DataFrame([input_values])
 
-# ✅ Convert to DataFrame for prediction
-final_value = pd.DataFrame([all_values], columns=col)
+        # Define the feature order the model expects.
+        # This is the most common source of errors. Double-check your training script!
+        feature_order = [
+            'gender', 'age', 'hypertension', 'heart_disease', 'smoking_history',
+            'bmi', 'HbA1c_level', 'blood_glucose_level'
+        ]
+        
+        # Reorder the dataframe columns
+        input_df = input_df[feature_order]
 
-# ✅ Predict
-ans = model.predict(final_value)[0]
+        # Get the prediction (XGBoost typically outputs 0 or 1 directly)
+        prediction = model.predict(input_df)[0]
+        
+        # --- Display Results ---
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for i in range(100):
+            time.sleep(0.02)
+            progress_bar.progress(i + 1)
+        
+        status_text.subheader("Prediction Complete!")
+        
+        if prediction == 0:
+            st.success('**Result:** No Diabetes Detected')
+            st.image('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExb252M2VpZWZ2aGZmMmZ5a2V0Z3V5a3J0eGU5b3Nuc3RzZzY3a3Y4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JpG2A9P3dPH2w/giphy.gif', width=300)
+        else:
+            st.warning('**Result:** Diabetes Found')
+            st.image('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2J2a3JtY255enV2N2U0b21iY210a3d0b2N3eWJ2aHk0d2R0c2g5MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7WTqo27pLRYxRtg4/giphy.gif', width=300)
 
-# ✅ Progress bar animation
-progress_bar = st.progress(0)
-placeholder = st.empty()
-placeholder.subheader('Predicting Diabetes')
+    st.markdown("---")
+    st.markdown("Design By : Divyanshu Raj")
 
-place = st.empty()
-place.image('https://media0.giphy.com/media/aPBXEeY01Dfp9tjyqi/giphy.gif', width=200)
-
-for i in range(100):
-    time.sleep(0.05)
-    progress_bar.progress(i + 1)
-
-# ✅ Show result
-if ans == 0:
-    placeholder.empty()
-    place.empty()
-    st.success('No Diabetes Detected')
 else:
-    placeholder.empty()
-    place.empty()
-    st.warning('Diabetes Found')
+    st.warning("Application could not start. Please check the file requirements in the information boxes above.")
 
-st.markdown("Design By : Divyanshu Raj")
